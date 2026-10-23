@@ -98,7 +98,7 @@ export default function BookTablePage() {
               {/* NID Number */}
               <div className="space-y-2">
                 <label className="block text-xs md:text-sm font-serif text-gray-800">
-                  NID Number*
+                  Phone Number*
                 </label>
                 <input
                   type="text"
@@ -106,7 +106,7 @@ export default function BookTablePage() {
                   required
                   value={formData.nidNumber}
                   onChange={handleChange}
-                  placeholder="Enter your NID number"
+                  placeholder="Enter your Phone number"
                   className="w-full bg-[#E5E2DC] border border-[#D3CFCA] rounded-none px-4 py-3.5 text-xs md:text-sm text-[#121619] focus:outline-none focus:ring-1 focus:ring-black placeholder-gray-500 font-serif shadow-inner"
                 />
               </div>
