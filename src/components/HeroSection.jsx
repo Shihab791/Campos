@@ -1,16 +1,21 @@
 export default function HeroSection() {
   return (
-    <section className="relative w-full h-[85vh] bg-neutral-900 overflow-hidden flex items-center justify-center">
-      {/* Background Image with Dark Overlay */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center opacity-70"
-        style={{ backgroundImage: `url('/hero-bg.png')` }} // public folder-e image-ti rakhte paren ba placeholder use korte paren
+    <section className="relative h-[45vh] min-h-[280px] w-full overflow-hidden bg-neutral-900 sm:h-[60vh] md:h-[75vh] lg:h-[85vh]">
+
+      {/* Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/hero-bg.png')" }}
       >
-        <div className="absolute inset-0 bg-black/40"></div>
+        {/* Dark Overlay */}
+        <div className="absolute inset-0 bg-black/40" />
       </div>
 
-      {/* Content Container */}
-  
+      {/* Content */}
+      <div className="relative z-10 flex h-full items-center justify-center px-4">
+        {/* Add your title and button here */}
+      </div>
+
     </section>
   );
 }
