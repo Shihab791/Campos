@@ -1,19 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation'; // Router import kora holo
+import { useRouter } from 'next/navigation';
 
 export default function AuthModal({ isOpen, onClose }) {
-  const router = useRouter(); // Router hook
-  
-  // Mode: 'login', 'signup', or 'admin'
+  const router = useRouter();
+
   const [mode, setMode] = useState('login');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Form Field States
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    nidCard: '',
     password: '',
     confirmPassword: '',
   });
@@ -22,32 +22,132 @@ export default function AuthModal({ isOpen, onClose }) {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (errorMsg) setErrorMsg(''); 
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
 
-    if (mode === 'signup' && formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match!');
+    // 1. Signup API Integration
+    if (mode === 'signup') {
+      if (formData.password !== formData.confirmPassword) {
+        setErrorMsg('Passwords do not match!');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/signup/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: formData.username,
+            email: formData.email,
+            password: formData.password,
+            confirm_password: formData.confirmPassword,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert('Signed up successfully! Please login.');
+          
+          // Reset form fields & switch to login mode
+          setFormData({
+            username: '',
+            email: '',
+            password: '',
+            confirmPassword: '',
+          });
+          setMode('login');
+        } else {
+          const errorDetail =
+            data.message ||
+            data.detail ||
+            (typeof data === 'object' ? JSON.stringify(data) : 'Signup failed!');
+          setErrorMsg(errorDetail);
+        }
+      } catch (err) {
+        console.error('Signup Error:', err);
+        setErrorMsg('Something went wrong. Please check your backend API!');
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
+    // 2. User Login API Integration
+    if (mode === 'login') {
+      setLoading(true);
+
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/login/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: formData.username,
+            password: formData.password,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert('User logged in successfully!');
+          
+          // টোকেন এবং ইউজারনেম লোকালস্টোরেজে সেভ করা হচ্ছে
+          if (data.access) {
+            localStorage.setItem('access_token', data.access);
+          }
+          if (data.refresh) {
+            localStorage.setItem('refresh_token', data.refresh);
+          }
+          
+          // Navbar-এ দেখানোর জন্য ইউজারনেম সেভ করা হলো
+          localStorage.setItem('username', formData.username);
+
+          setFormData({
+            username: '',
+            email: '',
+            password: '',
+            confirmPassword: '',
+          });
+          onClose();
+          window.location.reload(); // পেজ রিলোড করলে Navbar আপডেট হয়ে যাবে
+        } else {
+          const errorDetail =
+            data.message ||
+            data.detail ||
+            (typeof data === 'object' ? JSON.stringify(data) : 'Login failed!');
+          setErrorMsg(errorDetail);
+        }
+      } catch (err) {
+        console.error('Login Error:', err);
+        setErrorMsg('Something went wrong. Please check your backend API!');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // 3. Admin Login Action
     if (mode === 'admin') {
       console.log('ADMIN LOGIN Submitted:', {
         username: formData.username,
         password: formData.password,
       });
       alert('Admin logged in successfully!');
-      
-      onClose(); // Modal bondho hobe
-      router.push('/admin/dashboard'); // Direct Admin Dashboard page e niye jabe
+      onClose();
+      router.push('/admin/dashboard');
       return;
     }
-
-    // User Login / Signup Action
-    console.log(`${mode.toUpperCase()} Submitted:`, formData);
-    alert(`${mode === 'login' ? 'User logged in' : 'Signed up'} successfully!`);
-    onClose();
   };
 
   return (
@@ -67,7 +167,10 @@ export default function AuthModal({ isOpen, onClose }) {
         <div className="flex border-b border-white/10 mb-6">
           <button
             type="button"
-            onClick={() => setMode('login')}
+            onClick={() => {
+              setMode('login');
+              setErrorMsg('');
+            }}
             className={`flex-1 py-2 text-xs uppercase tracking-wider font-sans font-bold border-b-2 transition ${
               mode !== 'admin'
                 ? 'border-white text-white'
@@ -78,7 +181,10 @@ export default function AuthModal({ isOpen, onClose }) {
           </button>
           <button
             type="button"
-            onClick={() => setMode('admin')}
+            onClick={() => {
+              setMode('admin');
+              setErrorMsg('');
+            }}
             className={`flex-1 py-2 text-xs uppercase tracking-wider font-sans font-bold border-b-2 transition ${
               mode === 'admin'
                 ? 'border-white text-white'
@@ -96,10 +202,17 @@ export default function AuthModal({ isOpen, onClose }) {
           {mode === 'admin' && 'Admin Portal Access'}
         </h2>
 
+        {/* Error Alert Display */}
+        {errorMsg && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 text-red-300 text-xs rounded font-sans text-center">
+            {errorMsg}
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4 font-sans">
           
-          {/* Username / Admin ID */}
+          {/* Username */}
           <div>
             <label className="block text-xs uppercase tracking-wider text-gray-400 mb-1">
               {mode === 'admin' ? 'Admin Username' : 'Username'}
@@ -115,41 +228,22 @@ export default function AuthModal({ isOpen, onClose }) {
             />
           </div>
 
-          {/* Signup Specific Fields */}
+          {/* Signup Specific Fields (Email) */}
           {mode === 'signup' && (
-            <>
-              {/* Email */}
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-gray-400 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Enter your email"
-                  className="w-full bg-white/5 border border-white/20 rounded px-4 py-2.5 text-sm text-white focus:outline-none focus:border-white transition"
-                />
-              </div>
-
-              {/* NID Card Number */}
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-gray-400 mb-1">
-                  NID Card Number
-                </label>
-                <input
-                  type="text"
-                  name="nidCard"
-                  required
-                  value={formData.nidCard}
-                  onChange={handleChange}
-                  placeholder="Enter your NID number"
-                  className="w-full bg-white/5 border border-white/20 rounded px-4 py-2.5 text-sm text-white focus:outline-none focus:border-white transition"
-                />
-              </div>
-            </>
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-gray-400 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Enter your email"
+                className="w-full bg-white/5 border border-white/20 rounded px-4 py-2.5 text-sm text-white focus:outline-none focus:border-white transition"
+              />
+            </div>
           )}
 
           {/* Password */}
@@ -189,11 +283,16 @@ export default function AuthModal({ isOpen, onClose }) {
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-white text-[#121619] font-bold py-3 uppercase tracking-wider rounded text-sm hover:bg-gray-200 transition mt-2 font-sans"
+            disabled={loading}
+            className="w-full bg-white text-[#121619] font-bold py-3 uppercase tracking-wider rounded text-sm hover:bg-gray-200 transition mt-2 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {mode === 'login' && 'User Login'}
-            {mode === 'signup' && 'Sign Up'}
-            {mode === 'admin' && 'Admin Login'}
+            {loading
+              ? 'Processing...'
+              : mode === 'login'
+              ? 'User Login'
+              : mode === 'signup'
+              ? 'Sign Up'
+              : 'Admin Login'}
           </button>
         </form>
 
@@ -202,10 +301,13 @@ export default function AuthModal({ isOpen, onClose }) {
           <div className="mt-6 text-center text-sm text-gray-400 border-t border-white/10 pt-4 font-sans">
             {mode === 'login' ? (
               <p>
-                Don&apos;t have an account?{' '}
+                Don't have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => setMode('signup')}
+                  onClick={() => {
+                    setMode('signup');
+                    setErrorMsg('');
+                  }}
                   className="text-white underline font-semibold hover:text-gray-300 ml-1"
                 >
                   Sign Up
@@ -216,7 +318,10 @@ export default function AuthModal({ isOpen, onClose }) {
                 Already have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => setMode('login')}
+                  onClick={() => {
+                    setMode('login');
+                    setErrorMsg('');
+                  }}
                   className="text-white underline font-semibold hover:text-gray-300 ml-1"
                 >
                   Login
